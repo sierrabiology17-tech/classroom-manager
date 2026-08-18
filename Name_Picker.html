@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classroom Manager & Randomizer</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --accent: #10b981;
+      --accent-hover: #059669;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-subtle: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -4px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 2rem; color: var(--primary); font-weight: 800; }
+    header p { color: var(--text-subtle); font-size: 0.95rem; }
+
+    /* Navigation Tabs */
+    .tabs { display: flex; gap: 8px; background: #e2e8f0; padding: 6px; border-radius: var(--radius); margin-bottom: 24px; }
+    .tab-btn { flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-subtle); transition: all 0.2s; }
+    .tab-btn.active { background: var(--surface); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Cards Layout */
+    .card { background: var(--surface); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px; }
+    .card-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; color: var(--text); display: flex; justify-content: space-between; align-items: center; }
+
+    /* Forms & Inputs */
+    label { display: block; font-size: 0.875rem; font-weight: 600; color: var(--text-subtle); margin-bottom: 6px; }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; margin-bottom: 16px; transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+    textarea { height: 120px; resize: vertical; }
+
+    .btn { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-accent { background: var(--accent); }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-secondary { background: #cbd5e1; color: var(--text); }
+    .btn-secondary:hover { background: #94a3b8; }
+    .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+    /* Period Setup Selector */
+    .period-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .period-chip { padding: 10px; text-align: center; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; background: var(--surface); }
+    .period-chip.selected { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+
+    /* Student List Roster */
+    .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+    .student-item { display: flex; align-items: center; gap: 10px; background: var(--bg); padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
+    .student-item.inactive { opacity: 0.5; text-decoration: line-through; }
+
+    /* Overlay Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: var(--surface); width: 90%; max-width: 600px; max-height: 85vh; border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); overflow-y: auto; text-align: center; animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .result-huge { font-size: 2.5rem; font-weight: 800; color: var(--primary); margin: 20px 0; padding: 20px; background: #eef2ff; border-radius: 12px; border: 2px dashed var(--primary); }
+    .groups-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; text-align: left; margin: 20px 0; }
+    .group-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .group-box h4 { font-size: 0.95rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 8px; }
+    .group-box ul { list-style: none; font-size: 0.875rem; }
+    .group-box li { padding: 2px 0; }
+
+    /* History List */
+    .history-item { border-left: 4px solid var(--primary); padding-left: 12px; margin-bottom: 16px; background: var(--bg); padding: 12px; border-radius: 0 8px 8px 0; }
+    .history-time { font-size: 0.75rem; color: var(--text-subtle); margin-bottom: 4px; }
+    .actions-bar { display: flex; gap: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Classroom Manager</h1>
+    <p>Name Picker & Group Generator for Teachers</p>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs">
+    <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')">Setup & Rosters</button>
+    <button class="tab-btn" data-tab="picker" onclick="switchTab('picker')">Picker & Grouper</button>
+    <button class="tab-btn" data-tab="history" onclick="switchTab('history')">History Log</button>
+  </div>
+
+  <!-- TAB 1: SETUP & ROSTERS -->
+  <div id="setup-tab" class="tab-content">
+    <div class="card">
+      <div class="card-header">Select Period to Manage (Max 4)</div>
+      <div class="period-selector">
+        <div class="period-chip" data-period="1" onclick="selectSetupPeriod(1)">Period 1</div>
+        <div class="period-chip" data-period="2" onclick="selectSetupPeriod(2)">Period 2</div>
+        <div class="period-chip" data-period="3" onclick="selectSetupPeriod(3)">Period 3</div>
+        <div class="period-chip" data-period="4" onclick="selectSetupPeriod(4)">Period 4</div>
+      </div>
+
+      <label for="period-name-input">Optional Period Name / Subject:</label>
+      <input type="text" id="period-name-input" placeholder="e.g., 8th Grade Science" onchange="savePeriodDetails()">
+
+      <label for="student-paste-box">Paste Student Names (One name per line):</label>
+      <textarea id="student-paste-box" placeholder="Alice Smith&#10;Bob Jones&#10;Charlie Brown"></textarea>
+      <button class="btn" onclick="savePeriodDetails()">Save Period Roster</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span id="roster-title">Period 1 Roster</span>
+        <div style="display:flex; gap: 8px;">
+          <button class="btn btn-sm btn-accent" onclick="setAllAttendance(true)">Mark All Present</button>
+          <button class="btn btn-sm btn-secondary" onclick="setAllAttendance(false)">Mark All Absent</button>
+        </div>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-subtle); margin-bottom: 12px;">Uncheck students to temporarily remove them. Attendance resets automatically on a new calendar day.</p>
+      <div class="student-grid" id="student-checklist"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Data Backup & Restore</div>
+      <p style="font-size: 0.85rem; color: var(--text-subtle); margin-bottom: 12px;">Export your roster data to a file so it survives browser cache and history wipes.</p>
+      <div class="actions-bar">
+        <button class="btn btn-secondary btn-sm" onclick="exportData()">Export Data (JSON)</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-file-input').click()">Import Data (JSON)</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PICKER & GROUPER -->
+  <div id="picker-tab" class="tab-content">
+    <div class="card">
+      <label for="active-period-select">Select Active Period:</label>
+      <select id="active-period-select" onchange="onPickerPeriodChange()"></select>
+      <p id="active-count-indicator" style="font-size: 0.9rem; font-weight: 600; color: var(--primary); margin-bottom: 16px;"></p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+      <!-- Single Name Picker -->
+      <div class="card">
+        <div class="card-header">Random Student Picker</div>
+        <p style="font-size: 0.875rem; color: var(--text-subtle); margin-bottom: 16px;">Randomly selects one present student from the active period roster.</p>
+        <button class="btn btn-accent" style="width: 100%; padding: 14px;" onclick="pickRandomStudent()">Pick Random Student</button>
+      </div>
+
+      <!-- Group Generator -->
+      <div class="card">
+        <div class="card-header">Group Generator</div>
+        <label for="group-mode">Group By:</label>
+        <select id="group-mode">
+          <option value="size">Desired Group Size (e.g., 4 students per group)</option>
+          <option value="count">Total Number of Groups (e.g., 5 groups total)</option>
+        </select>
+
+        <label for="group-target-val">Target Number:</label>
+        <input type="number" id="group-target-val" value="3" min="1" max="50">
+
+        <button class="btn" style="width: 100%; padding: 14px;" onclick="generateGroups()">Generate Groups</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: HISTORY LOG -->
+  <div id="history-tab" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span>Previous Results</span>
+        <button class="btn btn-sm btn-secondary" onclick="clearHistory()">Clear History</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY MODAL FOR RESULTS -->
+<div class="modal-overlay" id="result-modal">
+  <div class="modal-card">
+    <h2 id="modal-title" style="color: var(--primary);">Result</h2>
+    <div id="modal-body"></div>
+    <button class="btn" style="margin-top: 16px;" onclick="closeModal()">Close & Save to History</button>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'teacher_app_data_v3';
+  const HISTORY_KEY = 'teacher_app_history_v3';
+
+  const todayDateString = new Date().toLocaleDateString('en-CA');
+
+  let defaultState = {
+    activeTab: 'setup',
+    lastSelectedPeriod: 1,
+    lastActiveDate: todayDateString,
+    periods: {
+      1: { customName: '', raw: '', students: [] },
+      2: { customName: '', raw: '', students: [] },
+      3: { customName: '', raw: '', students: [] },
+      4: { customName: '', raw: '', students: [] }
+    }
+  };
+
+  let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultState;
+  let appHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+
+  function initApp() {
+    // Daily Reset Check: If current date is different from last active date, reset attendance
+    if (appData.lastActiveDate !== todayDateString) {
+      for (let p in appData.periods) {
+        if (appData.periods[p].students) {
+          appData.periods[p].students.forEach(s => s.active = true);
+        }
+      }
+      appData.lastActiveDate = todayDateString;
+    }
+
+    saveData();
+
+    // Restore Last Selected Period for Setup view
+    selectSetupPeriod(appData.lastSelectedPeriod || 1);
+
+    // Restore Last Active Tab
+    switchTab(appData.activeTab || 'setup');
+  }
+
+  function saveData() {
+    appData.lastActiveDate = todayDateString;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  }
+
+  function saveHistory() {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(appHistory));
+  }
+
+  function switchTab(tabId) {
+    appData.activeTab = tabId;
+    saveData();
+
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+    });
+
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`${tabId}-tab`).classList.add('active');
+
+    if (tabId === 'picker') updatePickerTab();
+    if (tabId === 'history') renderHistory();
+  }
+
+  function selectSetupPeriod(p) {
+    appData.lastSelectedPeriod = p;
+    saveData();
+
+    document.querySelectorAll('.period-chip').forEach(chip => {
+      chip.classList.toggle('selected', parseInt(chip.getAttribute('data-period')) === p);
+    });
+    loadSetupPeriodData();
+  }
+
+  function loadSetupPeriodData() {
+    const p = appData.lastSelectedPeriod;
+    const pData = appData.periods[p];
+    document.getElementById('period-name-input').value = pData.customName || '';
+    document.getElementById('student-paste-box').value = pData.raw || '';
+    document.getElementById('roster-title').textContent = getPeriodLabel(p) + " Roster";
+    renderStudentChecklist();
+  }
+
+  function savePeriodDetails() {
+    const p = appData.lastSelectedPeriod;
+    const rawText = document.getElementById('student-paste-box').value;
+    const nameInput = document.getElementById('period-name-input').value;
+    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    const existingMap = new Map((appData.periods[p].students || []).map(s => [s.name, s.active]));
+
+    const updatedStudents = lines.map(name => ({
+      name: name,
+      active: existingMap.has(name) ? existingMap.get(name) : true
+    }));
+
+    appData.periods[p] = {
+      customName: nameInput,
+      raw: rawText,
+      students: updatedStudents
+    };
+
+    saveData();
+    renderStudentChecklist();
+  }
+
+  function renderStudentChecklist() {
+    const p = appData.lastSelectedPeriod;
+    const container = document.getElementById('student-checklist');
+    container.innerHTML = '';
+    const students = appData.periods[p].students || [];
+
+    if (students.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-subtle); grid-column:1/-1;">No students added yet.</p>';
+      return;
+    }
+
+    students.forEach((s, idx) => {
+      const item = document.createElement('div');
+      item.className = `student-item ${s.active ? '' : 'inactive'}`;
+      item.innerHTML = `
+        <input type="checkbox" ${s.active ? 'checked' : ''} onchange="toggleStudent(${idx})">
+        <span>${escapeHtml(s.name)}</span>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  function toggleStudent(idx) {
+    const p = appData.lastSelectedPeriod;
+    appData.periods[p].students[idx].active = !appData.periods[p].students[idx].active;
+    saveData();
+    renderStudentChecklist();
+  }
+
+  function setAllAttendance(status) {
+    const p = appData.lastSelectedPeriod;
+    (appData.periods[p].students || []).forEach(s => s.active = status);
+    saveData();
+    renderStudentChecklist();
+  }
+
+  function getPeriodLabel(p) {
+    const cName = appData.periods[p].customName;
+    return cName ? `Period ${p} (${cName})` : `Period ${p}`;
+  }
+
+  function updatePickerTab() {
+    const select = document.getElementById('active-period-select');
+    select.innerHTML = '';
+
+    for (let p = 1; p <= 4; p++) {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = getPeriodLabel(p);
+      select.appendChild(opt);
+    }
+
+    select.value = appData.lastSelectedPeriod || 1;
+    onPickerPeriodChange();
+  }
+
+  function onPickerPeriodChange() {
+    const select = document.getElementById('active-period-select');
+    appData.lastSelectedPeriod = parseInt(select.value);
+    saveData();
+
+    const activeStudents = getActiveStudents(appData.lastSelectedPeriod);
+    document.getElementById('active-count-indicator').textContent = 
+      `Active Students Available: ${activeStudents.length}`;
+  }
+
+  function getActiveStudents(period) {
+    return (appData.periods[period].students || []).filter(s => s.active).map(s => s.name);
+  }
+
+  function pickRandomStudent() {
+    const p = appData.lastSelectedPeriod;
+    const students = getActiveStudents(p);
+
+    if (students.length === 0) {
+      alert('No active students available in this period!');
+      return;
+    }
+
+    const picked = students[Math.floor(Math.random() * students.length)];
+    const title = `Random Picker Result`;
+    const bodyHTML = `
+      <p style="color: var(--text-subtle); font-weight: 600;">${getPeriodLabel(p)}</p>
+      <div class="result-huge">${escapeHtml(picked)}</div>
+    `;
+
+    openModal(title, bodyHTML);
+    addHistoryItem(p, 'Random Student Picked', picked);
+  }
+
+  function generateGroups() {
+    const p = appData.lastSelectedPeriod;
+    let students = [...getActiveStudents(p)];
+
+    if (students.length === 0) {
+      alert('No active students available to group!');
+      return;
+    }
+
+    for (let i = students.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [students[i], students[j]] = [students[j], students[i]];
+    }
+
+    const mode = document.getElementById('group-mode').value;
+    const targetVal = parseInt(document.getElementById('group-target-val').value) || 2;
+
+    let numGroups = 1;
+    if (mode === 'size') {
+      numGroups = Math.max(1, Math.ceil(students.length / Math.max(1, targetVal)));
+    } else {
+      numGroups = Math.max(1, Math.min(targetVal, students.length));
+    }
+
+    let groups = Array.from({ length: numGroups }, () => []);
+    students.forEach((student, idx) => {
+      groups[idx % numGroups].push(student);
+    });
+
+    let groupsHTML = '<div class="groups-container">';
+    groups.forEach((g, idx) => {
+      groupsHTML += `
+        <div class="group-box">
+          <h4>Group ${idx + 1} (${g.length})</h4>
+          <ul>${g.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+        </div>
+      `;
+    });
+    groupsHTML += '</div>';
+
+    openModal('Generated Groups', `<p style="color:var(--text-subtle); font-weight:600;">${getPeriodLabel(p)}</p>` + groupsHTML);
+    
+    const summaryText = groups.map((g, i) => `Group ${i+1}: ${g.join(', ')}`).join(' | ');
+    addHistoryItem(p, 'Groups Generated', summaryText);
+  }
+
+  function openModal(title, content) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = content;
+    document.getElementById('result-modal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('result-modal').classList.remove('active');
+  }
+
+  function addHistoryItem(period, type, details) {
+    appHistory.unshift({
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+      periodName: getPeriodLabel(period),
+      type: type,
+      details: details
+    });
+    saveHistory();
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('history-list');
+    container.innerHTML = '';
+
+    if (appHistory.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-subtle);">No previous activity logged yet.</p>';
+      return;
+    }
+
+    appHistory.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <div class="history-time">${escapeHtml(item.timestamp)} • <strong>${escapeHtml(item.periodName)}</strong></div>
+        <div style="font-weight:700; color:var(--primary); font-size:0.9rem;">${escapeHtml(item.type)}</div>
+        <div style="font-size:0.95rem; margin-top:4px;">${escapeHtml(item.details)}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function clearHistory() {
+    if (confirm('Clear all history records?')) {
+      appHistory = [];
+      saveHistory();
+      renderHistory();
+    }
+  }
+
+  function exportData() {
+    const exportObject = { appData, appHistory };
+    const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `classroom_manager_backup_${todayDateString}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (imported.appData) {
+          appData = imported.appData;
+          appHistory = imported.appHistory || [];
+          saveData();
+          saveHistory();
+          initApp();
+          alert('Classroom data restored successfully!');
+        } else {
+          alert('Invalid backup file format.');
+        }
+      } catch (err) {
+        alert('Failed to read backup file.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Initialize application state on page load
+  initApp();
+</script>
+</body>
+</html>
